@@ -11,6 +11,9 @@ import hashlib
 import re
 import time
 import uuid as uuid_lib
+import threading
+import http.server
+import socketserver
 from datetime import datetime, timezone, timedelta
 
 # ==================== KONFIGÜRASYON ====================
@@ -22,6 +25,15 @@ GAME_ID = 212  # KarateKido
 
 bot = telebot.TeleBot(TOKEN)
 pending_link = {}
+
+# ==================== KOYEB HEALTH CHECK ALDATICI ====================
+def run_dummy_server():
+    handler = http.server.SimpleHTTPRequestHandler
+    try:
+        with socketserver.TCPServer(("", 8000), handler) as httpd:
+            httpd.serve_forever()
+    except Exception as e:
+        print(f"Health check server hatası: {e}")
 
 # ==================== MD5 IMPLEMENTATION ====================
 def md5(text):
@@ -228,7 +240,7 @@ def link_handler(message):
     
     del pending_link[message.chat.id]
 
-@bot.message_handler(func=lambda msg: msg.chat.id not in pending_link)
+@bot.message_handler(func=lambda msg: msg.chat.id in pending_link)
 def unknown_handler(message):
     if message.from_user.id == BOT_OWNER_ID:
         bot.reply_to(message, "💡 /start yazıp link gönderme talimatlarını alabilirsin.")
@@ -242,6 +254,9 @@ if __name__ == "__main__":
     ║     Authorized Pentest Tool          ║
     ╚══════════════════════════════════════╝
     """)
+    print("[*] Health check server başlatılıyor (Port 8000)...")
+    threading.Thread(target=run_dummy_server, daemon=True).start()
+    
     print("[*] Bot başlatılıyor...")
     print(f"[*] Hedef Kullanıcı ID: {BOT_OWNER_ID}")
     print("[*] Bekleniyor... Telegram'da @bot ile konuş")
